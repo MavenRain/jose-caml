@@ -141,4 +141,112 @@ for name, value in (("n", a2_n64), ("s", a2_s64)):
 must_contain(test_rsa, a2_h64, "rfc7515 a2 header")
 must_contain(test_rsa, a2_e64, "rfc7515 a2 e")
 
+# M11 RFC 7515 A.3: redo the whole ECDSA P-256 verify with python
+# integers (affine point math, pow(-1) inverses): u1*G + u2*Q must land
+# on x == r mod n. Then require the constants to sit verbatim in
+# test_p256.ml, including the derived off-curve and boundary constants
+# the negative tests use, so those negatives are pinned to independently
+# recomputed values too.
+
+
+def enc(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
+
+
+p256_p = 0xFFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFF
+p256_n = 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551
+p256_b = 0x5AC635D8AA3A93E7B3EBBD55769886BC651D06B0CC53B0F63BCE3C3E27D2604B
+p256_gx = 0x6B17D1F2E12C4247F8BCE6E563A440F277037D812DEB33A0F4A13945D898C296
+p256_gy = 0x4FE342E2FE1A7F9B8EE7EB4A7C0F9E162BCE33576B315ECECBB6406837BF51F5
+
+
+def ec_on_curve(x: int, y: int) -> bool:
+    return (y * y - (x * x * x - 3 * x + p256_b)) % p256_p == 0
+
+
+def ec_add(P, Q):
+    if P is None:
+        return Q
+    if Q is None:
+        return P
+    (x1, y1), (x2, y2) = P, Q
+    if x1 == x2 and (y1 + y2) % p256_p == 0:
+        return None
+    if P == Q:
+        lam = (3 * x1 * x1 - 3) * pow(2 * y1, -1, p256_p) % p256_p
+    else:
+        lam = (y2 - y1) * pow(x2 - x1, -1, p256_p) % p256_p
+    x3 = (lam * lam - x1 - x2) % p256_p
+    return (x3, (lam * (x1 - x3) - y1) % p256_p)
+
+
+def ec_mul(k: int, P):
+    R = None
+    while k:
+        if k & 1:
+            R = ec_add(R, P)
+        P = ec_add(P, P)
+        k >>= 1
+    return R
+
+
+a3_h64 = "eyJhbGciOiJFUzI1NiJ9"
+a3_p64 = a2_p64
+a3_x64 = "f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU"
+a3_y64 = "x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0"
+a3_s64 = (
+    "DtEhU3ljbEg8L38VWAfUAqOyKAM6-Xx-F4GawxaepmXFCgfTjDxw5djxLa8ISlSA"
+    "pmWQxfKTUJqPP3-Kg6NU1Q"
+)
+a3_qx = int.from_bytes(b64u(a3_x64), "big")
+a3_qy = int.from_bytes(b64u(a3_y64), "big")
+a3_sig = b64u(a3_s64)
+a3_r = int.from_bytes(a3_sig[:32], "big")
+a3_s = int.from_bytes(a3_sig[32:], "big")
+a3_e = (
+    int.from_bytes(
+        hashlib.sha256(f"{a3_h64}.{a3_p64}".encode()).digest(), "big"
+    )
+    % p256_n
+)
+a3_ok = (
+    len(a3_sig) == 64
+    and ec_on_curve(a3_qx, a3_qy)
+    and 0 < a3_r < p256_n
+    and 0 < a3_s < p256_n
+)
+if a3_ok:
+    a3_w = pow(a3_s, -1, p256_n)
+    a3_point = ec_add(
+        ec_mul(a3_e * a3_w % p256_n, (p256_gx, p256_gy)),
+        ec_mul(a3_r * a3_w % p256_n, (a3_qx, a3_qy)),
+    )
+    a3_ok = a3_point is not None and a3_point[0] % p256_n == a3_r
+if not a3_ok:
+    print("diff_rfc: rfc7515 a3 ecdsa verify FAILED to recompute")
+    fail = 1
+else:
+    print("diff_rfc: rfc7515 a3 ecdsa verify ok")
+
+a3_off_y = a3_qy ^ 1
+if ec_on_curve(a3_qx, a3_off_y):
+    print("diff_rfc: a3 flipped y is unexpectedly ON the curve")
+    fail = 1
+
+test_p256 = root / "test" / "test_p256.ml"
+for i in range(0, len(a3_s64), 64):
+    must_contain(test_p256, a3_s64[i : i + 64], f"rfc7515 a3 sig[{i}]")
+must_contain(test_p256, a3_h64, "rfc7515 a3 header")
+must_contain(test_p256, a3_x64, "rfc7515 a3 x")
+must_contain(test_p256, a3_y64, "rfc7515 a3 y")
+must_contain(
+    test_p256, enc(a3_off_y.to_bytes(32, "big")), "a3 off-curve y"
+)
+must_contain(
+    test_p256, enc(p256_p.to_bytes(32, "big")), "p-256 field prime"
+)
+must_contain(
+    test_p256, enc(p256_n.to_bytes(32, "big")), "p-256 group order"
+)
+
 sys.exit(fail)

@@ -6,7 +6,7 @@ here="$(cd "$(dirname "$0")" && pwd)"
 
 dune build --root "$here" @all
 
-for t in test_codec test_hmac test_jwt test_limbs test_rsa; do
+for t in test_codec test_hmac test_jwt test_limbs test_rsa test_p256; do
   out="$("$here/_build/default/test/$t.exe")"
   echo "$t: $out"
   case "$out" in

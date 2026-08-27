@@ -6,7 +6,10 @@ type hs256
 type rs256
 type es256
 
-type material = Hs of string | Rs of { n : string; e : string }
+type material =
+  | Hs of string
+  | Rs of { n : string; e : string }
+  | Es of { x : string; y : string }
 
 type 'alg t = { alg : Algx.t; material : material }
 
@@ -94,14 +97,39 @@ let rs256 ~(n : string) ~(e : string) : (rs256 t, Errx.t) result =
     Error (Errx.Key_rejected "RS256 exponent is one")
   | () -> Ok { alg = Algx.RS256; material = Rs { n; e } }
 
+(* An ES256 public key: the affine point as two 32-byte big-endian
+   coordinates (a JWK's "x" and "y" after base64url decoding, RFC 7518
+   6.2.1). The point must lie on P-256 itself: accepting an off-curve
+   point is the invalid-curve attack, so membership is checked here,
+   once, at construction. Coordinates at or above the field prime are
+   non-canonical encodings of some other residue and are rejected
+   rather than reduced. *)
+let es256 ~(x : string) ~(y : string) : (es256 t, Errx.t) result =
+  match () with
+  | () when not (Int.equal (String.length x) 32) ->
+    Error (Errx.Key_rejected "ES256 x is not 32 bytes")
+  | () when not (Int.equal (String.length y) 32) ->
+    Error (Errx.Key_rejected "ES256 y is not 32 bytes")
+  | () when not (P256x.coord_in_field x) ->
+    Error (Errx.Key_rejected "ES256 x is not below the field prime")
+  | () when not (P256x.coord_in_field y) ->
+    Error (Errx.Key_rejected "ES256 y is not below the field prime")
+  | () when not (P256x.on_curve_bytes ~x ~y) ->
+    Error (Errx.Key_rejected "ES256 point is not on the curve")
+  | () -> Ok { alg = Algx.ES256; material = Es { x; y } }
+
 let alg (k : 'alg t) : Algx.t = k.alg
 
 (* The exact signature length this key accepts, so a wrong-shape
    signature is rejected before any crypto. *)
 let signature_length (k : 'alg t) : int =
-  match k.material with Hs _ -> 32 | Rs { n; _ } -> String.length n
+  match k.material with
+  | Hs _ -> 32
+  | Rs { n; _ } -> String.length n
+  | Es _ -> 64
 
 let verify_bytes (k : 'alg t) ~(input : string) ~(signature : string) : bool =
   match k.material with
   | Hs secret -> Hmacx.equal_ct (Hmacx.sha256 ~key:secret input) signature
   | Rs { n; e } -> Rsax.verify ~n ~e ~input ~signature
+  | Es { x; y } -> P256x.verify ~x ~y ~input ~signature

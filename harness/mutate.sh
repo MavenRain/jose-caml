@@ -9,7 +9,7 @@ root="$(cd "$here/.." && pwd)"
 
 tests_green() {
   dune build --root "$root" @all >/dev/null 2>&1 || return 2
-  for t in test_codec test_hmac test_jwt test_limbs test_rsa; do
+  for t in test_codec test_hmac test_jwt test_limbs test_rsa test_p256; do
     case "$("$root/_build/default/test/$t.exe" 2>/dev/null)" in
       *FAIL*) return 1 ;;
     esac
@@ -70,6 +70,20 @@ mutant key-rsa-modulus-floor lib/keyx.ml \
   "String.length n < 256" "String.length n < 0"
 mutant key-rsa-exponent-parity lib/keyx.ml \
   "when is_even e ->" "when false && is_even e ->"
+
+mutant p256-final-compare lib/p256x.ml \
+  "cmp (sc_red rx) r = 0" "cmp (sc_red rx) r <> 0"
+mutant p256-b-const lib/p256x.ml \
+  "5ac635d8aa3a93e7" "5ac635d8aa3a93e8"
+mutant p256-order-digit lib/p256x.ml \
+  "bce6faada7179e84f3b9cac2fc632551" "bce6faada7179e84f3b9cac2fc632552"
+mutant p256-u1-u2-roles lib/p256x.ml \
+  "jadd (smul u1 (of_affine gx gy)) (smul u2 (of_affine x y))" \
+  "jadd (smul u2 (of_affine gx gy)) (smul u1 (of_affine x y))"
+mutant key-es256-on-curve lib/keyx.ml \
+  "when not (P256x.on_curve_bytes ~x ~y) ->" "when false ->"
+mutant key-es256-sig-length lib/keyx.ml \
+  "| Es _ -> 64" "| Es _ -> 63"
 
 if tests_green; then
   echo "mutate: ladder restored green"

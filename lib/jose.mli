@@ -108,6 +108,13 @@ module Key : sig
      bytes. *)
   val rs256 : n:string -> e:string -> (rs256 t, Error.t) result
 
+  (* An ES256 public key from two 32-byte big-endian coordinates (a
+     JWK's decoded "x" and "y"). Rejects wrong-length coordinates,
+     coordinates at or above the field prime, and any point that is
+     not on the P-256 curve, so an invalid-curve point never becomes
+     a key. *)
+  val es256 : x:string -> y:string -> (es256 t, Error.t) result
+
   val alg : 'alg t -> Alg.t
 end
 
