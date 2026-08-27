@@ -6,7 +6,7 @@ type hs256
 type rs256
 type es256
 
-type material = Hs of string
+type material = Hs of string | Rs of { n : string; e : string }
 
 type 'alg t = { alg : Algx.t; material : material }
 
@@ -53,13 +53,55 @@ let hs256 ~(secret : string) : (hs256 t, Errx.t) result =
     Error (Errx.Key_rejected "HS256 secret looks like asymmetric key material")
   | () -> Ok { alg = Algx.HS256; material = Hs secret }
 
+(* The last byte of s, or None when empty; the parity guards below
+   read it. A fold, not an index: direct string indexing is partial,
+   and the inputs here are at most 1024 bytes read once per key
+   construction, so the linear walk costs nothing that matters. *)
+let last_byte (s : string) : int option =
+  String.fold_left (fun (_ : int option) c -> Some (Char.code c)) None s
+
+let is_even (s : string) : bool =
+  Option.fold ~none:false
+    ~some:(fun b -> Int.equal (b land 1) 0)
+    (last_byte s)
+
+(* An RS256 public key: modulus and exponent as minimal big-endian
+   bytes (a JWK's "n" and "e" after base64url decoding). RFC 7518 3.3
+   sets the 2048-bit floor; the 8192-bit modulus cap and the 8-byte
+   exponent cap bound the modexp work a hostile key set can demand.
+   Minimal encodings keep the modulus byte length equal to the RSA
+   length k, which the signature-length gate and the EM comparison in
+   Rsax both depend on. Parity: a real modulus is a product of odd
+   primes and a real verification exponent is odd, so even values are
+   garbage input, never a key. *)
+let rs256 ~(n : string) ~(e : string) : (rs256 t, Errx.t) result =
+  match () with
+  | () when String.length n < 256 ->
+    Error (Errx.Key_rejected "RS256 modulus shorter than 2048 bits")
+  | () when String.length n > 1024 ->
+    Error (Errx.Key_rejected "RS256 modulus longer than 8192 bits")
+  | () when String.starts_with ~prefix:"\x00" n ->
+    Error (Errx.Key_rejected "RS256 modulus has a leading zero byte")
+  | () when is_even n -> Error (Errx.Key_rejected "RS256 modulus is even")
+  | () when String.equal e "" ->
+    Error (Errx.Key_rejected "RS256 exponent is empty")
+  | () when String.starts_with ~prefix:"\x00" e ->
+    Error (Errx.Key_rejected "RS256 exponent has a leading zero byte")
+  | () when String.length e > 8 ->
+    Error (Errx.Key_rejected "RS256 exponent longer than 8 bytes")
+  | () when is_even e -> Error (Errx.Key_rejected "RS256 exponent is even")
+  | () when String.equal e "\x01" ->
+    Error (Errx.Key_rejected "RS256 exponent is one")
+  | () -> Ok { alg = Algx.RS256; material = Rs { n; e } }
+
 let alg (k : 'alg t) : Algx.t = k.alg
 
 (* The exact signature length this key accepts, so a wrong-shape
    signature is rejected before any crypto. *)
 let signature_length (k : 'alg t) : int =
-  match k.material with Hs _ -> 32
+  match k.material with Hs _ -> 32 | Rs { n; _ } -> String.length n
 
 let verify_bytes (k : 'alg t) ~(input : string) ~(signature : string) : bool =
   match k.material with
   | Hs secret -> Hmacx.equal_ct (Hmacx.sha256 ~key:secret input) signature
+  | Rs { n; e } -> Rsax.verify ~n ~e ~input ~signature

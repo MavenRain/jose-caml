@@ -81,4 +81,64 @@ must_contain(test_limbs, format(pow(m9_b, 65537, m9_m), "064x"), "m9 modexp resu
 must_contain(test_limbs, str(pow(65, 17, 3233)), "m9 rsa toy sign")
 must_contain(test_limbs, str(pow(2790, 2753, 3233)), "m9 rsa toy verify")
 
+# M10 RFC 7515 A.2: redo the whole RSASSA-PKCS1-v1_5 verify with python
+# pow() -- signature^e mod n must equal the exact EM built from python's
+# own sha256 of the signing input -- then require every 64-char fragment
+# of the constants to sit verbatim in test_rsa.ml. The EM check makes
+# the pinned vector self-authenticating: a mistyped constant cannot
+# satisfy it.
+
+
+def b64u(s: str) -> bytes:
+    return base64.urlsafe_b64decode(s + "=" * (-len(s) % 4))
+
+
+a2_h64 = "eyJhbGciOiJSUzI1NiJ9"
+a2_p64 = (
+    "eyJpc3MiOiJqb2UiLA0KICJleHAiOjEzMDA4MTkzODAsDQogImh0dHA6Ly9leGFt"
+    "cGxlLmNvbS9pc19yb290Ijp0cnVlfQ"
+)
+a2_n64 = (
+    "ofgWCuLjybRlzo0tZWJjNiuSfb4p4fAkd_wWJcyQoTbji9k0l8W26mPddxHmfHQp"
+    "-Vaw-4qPCJrcS2mJPMEzP1Pt0Bm4d4QlL-yRT-SFd2lZS-pCgNMsD1W_YpRPEwOW"
+    "vG6b32690r2jZ47soMZo9wGzjb_7OMg0LOL-bSf63kpaSHSXndS5z5rexMdbBYUs"
+    "LA9e-KXBdQOS-UTo7WTBEMa2R2CapHg665xsmtdVMTBQY4uDZlxvb3qCo5ZwKh9k"
+    "G4LT6_I5IhlJH7aGhyxXFvUK-DWNmoudF8NAco9_h9iaGNj8q2ethFkMLs91kzk2"
+    "PAcDTW9gb54h4FRWyuXpoQ"
+)
+a2_e64 = "AQAB"
+a2_s64 = (
+    "cC4hiUPoj9Eetdgtv3hF80EGrhuB__dzERat0XF9g2VtQgr9PJbu3XOiZj5RZmh7"
+    "AAuHIm4Bh-0Qc_lF5YKt_O8W2Fp5jujGbds9uJdbF9CUAr7t1dnZcAcQjbKBYNX4"
+    "BAynRFdiuB--f_nZLgrnbyTyWzO75vRK5h6xBArLIARNPvkSjtQBMHlb1L07Qe7K"
+    "0GarZRmB_eSN9383LcOLn6_dO--xi12jzDwusC-eOkHWEsqtFZESc6BfI7noOPqv"
+    "hJ1phCnvWh6IeYI2w9QOYEUipUTI8np6LbgGY9Fs98rqVt5AXLIhWkWywlVmtVrB"
+    "p0igcN_IoypGlUPQGe77Rw"
+)
+a2_n = int.from_bytes(b64u(a2_n64), "big")
+a2_e = int.from_bytes(b64u(a2_e64), "big")
+a2_s = int.from_bytes(b64u(a2_s64), "big")
+a2_k = len(b64u(a2_n64))
+a2_di = bytes.fromhex("3031300d060960864801650304020105000420")
+a2_hash = hashlib.sha256(f"{a2_h64}.{a2_p64}".encode()).digest()
+a2_em = (
+    b"\x00\x01"
+    + b"\xff" * (a2_k - len(a2_di) - 32 - 3)
+    + b"\x00"
+    + a2_di
+    + a2_hash
+)
+if pow(a2_s, a2_e, a2_n).to_bytes(a2_k, "big") != a2_em:
+    print("diff_rfc: rfc7515 a2 rsa verify FAILED to recompute")
+    fail = 1
+else:
+    print("diff_rfc: rfc7515 a2 rsa verify ok")
+
+test_rsa = root / "test" / "test_rsa.ml"
+for name, value in (("n", a2_n64), ("s", a2_s64)):
+    for i in range(0, len(value), 64):
+        must_contain(test_rsa, value[i : i + 64], f"rfc7515 a2 {name}[{i}]")
+must_contain(test_rsa, a2_h64, "rfc7515 a2 header")
+must_contain(test_rsa, a2_e64, "rfc7515 a2 e")
+
 sys.exit(fail)

@@ -9,7 +9,7 @@ root="$(cd "$here/.." && pwd)"
 
 tests_green() {
   dune build --root "$root" @all >/dev/null 2>&1 || return 2
-  for t in test_codec test_hmac test_jwt test_limbs; do
+  for t in test_codec test_hmac test_jwt test_limbs test_rsa; do
     case "$("$root/_build/default/test/$t.exe" 2>/dev/null)" in
       *FAIL*) return 1 ;;
     esac
@@ -58,6 +58,18 @@ mutant limbs-square-step lib/limbsx.ml \
   "red (mul_limbs sq sq)" "red (mul_limbs sq acc)"
 mutant limbs-le-shift lib/limbsx.ml \
   "(b0 lor (b1 lsl 8))" "(b0 lor (b1 lsl 7))"
+
+mutant rsa-em-compare lib/rsax.ml \
+  "Int.equal (Limbsx.cmp m (limbs_of_be_string em)) 0" \
+  "Int.equal (Limbsx.cmp m (limbs_of_be_string em)) 1"
+mutant rsa-digest-info lib/rsax.ml \
+  '\x05\x00\x04\x20' '\x05\x00\x04\x21'
+mutant rsa-ps-floor lib/rsax.ml \
+  "if ps < 8 then None" "if ps < 0 then None"
+mutant key-rsa-modulus-floor lib/keyx.ml \
+  "String.length n < 256" "String.length n < 0"
+mutant key-rsa-exponent-parity lib/keyx.ml \
+  "when is_even e ->" "when false && is_even e ->"
 
 if tests_green; then
   echo "mutate: ladder restored green"

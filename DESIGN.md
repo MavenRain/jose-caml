@@ -171,7 +171,7 @@ a shared vector set.
 | M7 | `time.ml`, `claims.ml`, `expect.ml`, `jwt.ml`: phantom admit pipeline | DONE |
 | M8 | compile-fail harness (misuse snippets + compiling control) | DONE |
 | M9 | `limbs.ml` bignum port + arbitrary-modulus modexp + tests | DONE |
-| M10 | `rsa.ml` PKCS#1 v1.5 verify, `Key.rs256`, RFC 7515 A.2 vector | TODO |
+| M10 | `rsax.ml` PKCS#1 v1.5 verify, `Key.rs256`, RFC 7515 A.2 vector | DONE |
 | M11 | `p256.ml` port, ES256 raw r||s, RFC 7515 A.3 vector, psychic rejects | TODO |
 | M12 | `jwk.ml` / JWKS: typed JWK parse, opaque-kid lookup, RFC 7517 vectors | TODO |
 | M13 | `verify_core.ml` extraction + CTLK model + P1..P6 + correspondence gate | TODO |

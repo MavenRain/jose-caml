@@ -101,6 +101,13 @@ module Key : sig
      an RS256 public key cannot be smuggled in as a MAC secret. *)
   val hs256 : secret:string -> (hs256 t, Error.t) result
 
+  (* An RS256 public key from minimal big-endian modulus and exponent
+     bytes (a JWK's decoded "n" and "e"). Rejects moduli under 2048 or
+     over 8192 bits, leading-zero (non-minimal) encodings, even
+     values, and exponents that are empty, even, one, or wider than 8
+     bytes. *)
+  val rs256 : n:string -> e:string -> (rs256 t, Error.t) result
+
   val alg : 'alg t -> Alg.t
 end
 
