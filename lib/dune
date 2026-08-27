@@ -2,5 +2,5 @@
  (name jose)
  (public_name jose_caml)
  (libraries sha2)
- (modules bytesx errx b64x jsonx algx headx hmacx keyx timex expx clx jwsx
+ (modules bytesx limbsx errx b64x jsonx algx headx hmacx keyx timex expx clx jwsx
    jwtx jose))

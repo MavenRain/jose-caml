@@ -121,8 +121,10 @@ let jws_checks : (string * bool) list =
          check_sig key (String.make 17000 'a')
          = Error (Jose.Error.Token_shape "token longer than 16 KiB"));
         ("padded signature",
-         Result.is_error
-           (check_sig key ("eyJhbGciOiJIUzI1NiJ9.e30.Zg==")));
+         (* The signature IS the correct HMAC, re-encoded with canonical
+            '=' padding: only the strict decoder can reject it. *)
+         check_sig key (good ^ "=")
+         = Error (Jose.Error.B64_invalid "byte outside alphabet"));
         ("short signature",
          (let si =
             Jose.B64url.encode "{\"alg\":\"HS256\"}" ^ "." ^ Jose.B64url.encode "{}"
@@ -153,8 +155,15 @@ let a1_checks : (string * bool) list =
         ~ok:(fun key ->
           [ ("rfc7515 a1 verifies", check_sig key a1_token = Ok ());
             ("rfc7515 a1 tamper",
-             Result.is_error
-               (check_sig key (a1_token ^ "x")))
+             check_sig key (a1_token ^ "x") = Error Jose.Error.Sig_invalid);
+            ("rfc7515 a1 payload swap",
+             (match String.split_on_char '.' a1_token with
+              | [ h64; (_ : string); s64 ] ->
+                check_sig key
+                  (h64 ^ "." ^ Jose.B64url.encode "{\"iss\":\"joe\"}" ^ "."
+                 ^ s64)
+                = Error Jose.Error.Sig_invalid
+              | [] | [ _ ] | [ _; _ ] | _ :: _ :: _ :: _ :: _ -> false))
           ])
         (Jose.Key.hs256 ~secret:k))
     (Jose.B64url.decode a1_key_b64)
@@ -266,6 +275,24 @@ let jwt_checks : (string * bool) list =
           verify ~e:expect_skew
             "{\"iss\":\"https://op.example\",\"aud\":\"svc\",\"exp\":1499999900}"
           = Error (Jose.Error.Expired { exp = 1499999900; now = 1500000000 }));
+         ("nbf at skew edge",
+          Result.is_ok
+            (verify ~e:expect_skew
+               "{\"iss\":\"https://op.example\",\"aud\":\"svc\",\"exp\":2000000000,\"nbf\":1500000100}"));
+         ("nbf beyond skew",
+          verify ~e:expect_skew
+            "{\"iss\":\"https://op.example\",\"aud\":\"svc\",\"exp\":2000000000,\"nbf\":1500000101}"
+          = Error
+              (Jose.Error.Not_yet_valid { nbf = 1500000101; now = 1500000000 }));
+         ("iat at skew edge",
+          Result.is_ok
+            (verify ~e:expect_skew
+               "{\"iss\":\"https://op.example\",\"aud\":\"svc\",\"exp\":2000000000,\"iat\":1500000100}"));
+         ("iat beyond skew",
+          verify ~e:expect_skew
+            "{\"iss\":\"https://op.example\",\"aud\":\"svc\",\"exp\":2000000000,\"iat\":1500000101}"
+          = Error
+              (Jose.Error.Iat_in_future { iat = 1500000101; now = 1500000000 }));
          ("nbf future",
           verify
             "{\"iss\":\"https://op.example\",\"aud\":\"svc\",\"exp\":2000000000,\"nbf\":1500000001}"
@@ -297,4 +324,10 @@ let jwt_checks : (string * bool) list =
             (verify "{\"iss\":\"a\",\"iss\":\"a\"}"))
        ])
 
-let () = run (jws_checks @ a1_checks @ key_checks @ jwt_checks)
+(* Pinned suite size: a collapsed fixture (any let* short-circuit above)
+   shrinks the list and fails this check as lost coverage. *)
+let expected_total : int = 65
+
+let () =
+  let all = jws_checks @ a1_checks @ key_checks @ jwt_checks in
+  run (("suite total pinned", Int.equal (List.length all) expected_total) :: all)

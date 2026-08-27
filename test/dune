@@ -12,3 +12,8 @@
  (name test_jwt)
  (modules test_jwt)
  (libraries jose))
+
+(test
+ (name test_limbs)
+ (modules test_limbs)
+ (libraries jose))

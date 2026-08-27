@@ -9,7 +9,7 @@ root="$(cd "$here/.." && pwd)"
 
 tests_green() {
   dune build --root "$root" @all >/dev/null 2>&1 || return 2
-  for t in test_codec test_hmac test_jwt; do
+  for t in test_codec test_hmac test_jwt test_limbs; do
     case "$("$root/_build/default/test/$t.exe" 2>/dev/null)" in
       *FAIL*) return 1 ;;
     esac
@@ -49,6 +49,15 @@ mutant jwk-header lib/headx.ml \
 mutant alg-none lib/algx.ml \
   "when String.equal s \"HS256\" -> Ok HS256" \
   "when String.equal s \"HS256\" || String.equal s \"none\" -> Ok HS256"
+
+mutant limbs-sub-borrow lib/limbsx.ml \
+  "((s + 0x10000) :: acc, 1)" "((s + 0x10000) :: acc, 0)"
+mutant limbs-bit-mask lib/limbsx.ml \
+  "(limb lsr i) land 1" "(limb lsr i) land 0"
+mutant limbs-square-step lib/limbsx.ml \
+  "red (mul_limbs sq sq)" "red (mul_limbs sq acc)"
+mutant limbs-le-shift lib/limbsx.ml \
+  "(b0 lor (b1 lsl 8))" "(b0 lor (b1 lsl 7))"
 
 if tests_green; then
   echo "mutate: ladder restored green"

@@ -38,7 +38,8 @@ deletes the class instead of patching instances.
 Stdlib-only core, plus two of our own pinned libraries (karamel-710 switch):
 
 - `ctlk_topos` (git+file pin): the CTLK-in-topos model-checker kernel, for
-  the `model/` layer.
+  the `model/` layer. Not yet in `jose_caml.opam` depends: it becomes an
+  opam dependency when the `model/` layer lands at M13.
 - `sha2` (git+file pin): SHA-256 / SHA-512, for HMAC, RSA digest info, and
   the ECDSA message digest.
 
@@ -169,7 +170,7 @@ a shared vector set.
 | M6 | `jws.ml` compact verify for HS256; RFC 7515 A.1 vector | DONE |
 | M7 | `time.ml`, `claims.ml`, `expect.ml`, `jwt.ml`: phantom admit pipeline | DONE |
 | M8 | compile-fail harness (misuse snippets + compiling control) | DONE |
-| M9 | `limbs.ml` bignum port + arbitrary-modulus modexp + tests | TODO |
+| M9 | `limbs.ml` bignum port + arbitrary-modulus modexp + tests | DONE |
 | M10 | `rsa.ml` PKCS#1 v1.5 verify, `Key.rs256`, RFC 7515 A.2 vector | TODO |
 | M11 | `p256.ml` port, ES256 raw r||s, RFC 7515 A.3 vector, psychic rejects | TODO |
 | M12 | `jwk.ml` / JWKS: typed JWK parse, opaque-kid lookup, RFC 7517 vectors | TODO |

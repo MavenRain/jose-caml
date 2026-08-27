@@ -69,4 +69,16 @@ must_contain(test_jwt, a1_sig, "rfc7515 a1 signature")
 must_contain(test_jwt, a1_h64, "rfc7515 a1 header")
 must_contain(test_jwt, "AyM1SysPpbyDfgZld3umj1qzKObwVMkoqQ-EstJQLr_T", "rfc7515 a1 key")
 
+# M9 limbs: recompute the 255-bit modexp vector with python pow() and
+# require modulus, base, and result to sit verbatim in test_limbs.ml,
+# plus the toy-RSA verify pair.
+test_limbs = root / "test" / "test_limbs.ml"
+m9_m = 2**255 - 19
+m9_b = int("4a7c559911fa2016c34479067b47d02be2b17b0b1b0d8a2d6d312bc939b204d1", 16)
+must_contain(test_limbs, format(m9_m, "x"), "m9 modexp modulus")
+must_contain(test_limbs, format(m9_b, "x"), "m9 modexp base")
+must_contain(test_limbs, format(pow(m9_b, 65537, m9_m), "064x"), "m9 modexp result")
+must_contain(test_limbs, str(pow(65, 17, 3233)), "m9 rsa toy sign")
+must_contain(test_limbs, str(pow(2790, 2753, 3233)), "m9 rsa toy verify")
+
 sys.exit(fail)

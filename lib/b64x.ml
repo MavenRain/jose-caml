@@ -5,18 +5,28 @@
 
 let ( let* ) = Result.bind
 
-let enc_chars : char list =
-  List.of_seq
-    (String.to_seq
-       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_")
+let alphabet : string =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 
-(* Total: the index is masked to [0, 63]. *)
+module Imap = Map.Make (Int)
+module Cmap = Map.Make (Char)
+
+let enc_map : char Imap.t =
+  Seq.fold_left
+    (fun m (i, c) -> Imap.add i c m)
+    Imap.empty (String.to_seqi alphabet)
+
+(* Total: the index is masked to [0, 63]; Maps keep both lookups total
+   without an O(n) list scan per character. *)
 let enc_char (i : int) : char =
-  Option.value (List.nth_opt enc_chars (i land 63)) ~default:'A'
+  Option.value (Imap.find_opt (i land 63) enc_map) ~default:'A'
 
-let dec_assoc : (char * int) list = List.mapi (fun i c -> (c, i)) enc_chars
+let dec_map : int Cmap.t =
+  Seq.fold_left
+    (fun m (i, c) -> Cmap.add c i m)
+    Cmap.empty (String.to_seqi alphabet)
 
-let dec_val (c : char) : int option = List.assoc_opt c dec_assoc
+let dec_val (c : char) : int option = Cmap.find_opt c dec_map
 
 let encode (s : string) : string =
   let emit3 (a : int) (b : int) (c : int) : char list =

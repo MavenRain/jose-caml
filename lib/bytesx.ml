@@ -19,11 +19,17 @@ let byte_table : string =
   ^ "\xe0\xe1\xe2\xe3\xe4\xe5\xe6\xe7\xe8\xe9\xea\xeb\xec\xed\xee\xef"
   ^ "\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7\xf8\xf9\xfa\xfb\xfc\xfd\xfe\xff"
 
-let byte_chars : char list = List.of_seq (String.to_seq byte_table)
+module Imap = Map.Make (Int)
 
-(* Total: the index is masked to [0, 255], so the lookup always hits. *)
+let byte_map : char Imap.t =
+  Seq.fold_left
+    (fun m (i, c) -> Imap.add i c m)
+    Imap.empty (String.to_seqi byte_table)
+
+(* Total: the index is masked to [0, 255], so the lookup always hits.
+   A Map keeps the accessor total without the O(n) list scan per byte. *)
 let chr (i : int) : char =
-  Option.value (List.nth_opt byte_chars (i land 255)) ~default:'\x00'
+  Option.value (Imap.find_opt (i land 255) byte_map) ~default:'\x00'
 
 let of_codes (codes : int list) : string =
   String.of_seq (List.to_seq (List.map chr codes))
