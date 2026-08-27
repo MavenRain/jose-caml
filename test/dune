@@ -1,0 +1,14 @@
+(test
+ (name test_codec)
+ (modules test_codec)
+ (libraries jose))
+
+(test
+ (name test_hmac)
+ (modules test_hmac)
+ (libraries jose))
+
+(test
+ (name test_jwt)
+ (modules test_jwt)
+ (libraries jose))

@@ -1,0 +1,8 @@
+File "bad_forge_verified.ml", line 4, characters 2-3:
+4 |   c
+      ^
+Error: The value "c" has type "Jose.Claims.unverified Jose.Claims.t"
+       but an expression was expected of type
+         "Jose.Claims.verified Jose.Claims.t"
+       Type "Jose.Claims.unverified" is not compatible with type
+         "Jose.Claims.verified"

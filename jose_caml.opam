@@ -1,0 +1,15 @@
+opam-version: "2.0"
+synopsis: "Misuse-proof JOSE / OIDC token verification"
+description:
+  "JWT/JWS verification where the type system makes the classic identity CVEs unrepresentable: phantom-typed verified claims, algorithm fixed at key construction, mandatory aud/iss/exp witnesses."
+maintainer: "Onyeka Obi"
+authors: "Onyeka Obi"
+license: "MIT OR Apache-2.0"
+depends: [
+  "ocaml" {>= "5.1"}
+  "dune" {>= "3.0"}
+  "sha2"
+]
+build: [
+  ["dune" "build" "-p" name "-j" jobs]
+]

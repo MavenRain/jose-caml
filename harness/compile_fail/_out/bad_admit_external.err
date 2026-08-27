@@ -1,0 +1,4 @@
+File "bad_admit_external.ml", line 2, characters 10-27:
+2 | let bad = Jose.Claims.admit
+              ^^^^^^^^^^^^^^^^^
+Error: Unbound value "Jose.Claims.admit"

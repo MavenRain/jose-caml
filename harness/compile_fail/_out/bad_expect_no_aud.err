@@ -1,0 +1,7 @@
+File "bad_expect_no_aud.ml", line 2, characters 53-77:
+2 | let bad (iss : Jose.Expect.issuer) : Jose.Expect.t = Jose.Expect.make ~iss ()
+                                                         ^^^^^^^^^^^^^^^^^^^^^^^^
+Error: This expression has type "aud:Jose.Expect.audience -> Jose.Expect.t"
+       but an expression was expected of type "Jose.Expect.t"
+  Hint: This function application is partial,
+  maybe some arguments are missing.

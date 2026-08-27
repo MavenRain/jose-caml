@@ -1,0 +1,3 @@
+_build/
+harness/compile_fail/_out/
+*.bak

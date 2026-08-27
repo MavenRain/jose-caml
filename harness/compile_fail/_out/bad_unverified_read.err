@@ -1,0 +1,8 @@
+File "bad_unverified_read.ml", line 3, characters 22-23:
+3 |   Jose.Claims.subject c
+                          ^
+Error: The value "c" has type "Jose.Claims.unverified Jose.Claims.t"
+       but an expression was expected of type
+         "Jose.Claims.verified Jose.Claims.t"
+       Type "Jose.Claims.unverified" is not compatible with type
+         "Jose.Claims.verified"
