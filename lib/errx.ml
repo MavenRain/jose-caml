@@ -13,6 +13,7 @@ type t =
   | Header_malformed of string
   | Sig_invalid
   | Key_rejected of string
+  | Jwk_invalid of string
   | Missing_claim of string
   | Claim_malformed of string
   | Iss_mismatch
@@ -37,6 +38,7 @@ let to_string (e : t) : string =
   | Header_malformed s -> "malformed header: " ^ s
   | Sig_invalid -> "signature invalid"
   | Key_rejected s -> "key rejected: " ^ s
+  | Jwk_invalid s -> "jwk: " ^ s
   | Missing_claim c -> "missing claim: " ^ c
   | Claim_malformed c -> "malformed claim: " ^ c
   | Iss_mismatch -> "issuer mismatch"

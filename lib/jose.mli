@@ -19,6 +19,7 @@ module Error : sig
     | Header_malformed of string
     | Sig_invalid
     | Key_rejected of string
+    | Jwk_invalid of string
     | Missing_claim of string
     | Claim_malformed of string
     | Iss_mismatch
@@ -116,6 +117,46 @@ module Key : sig
   val es256 : x:string -> y:string -> (es256 t, Error.t) result
 
   val alg : 'alg t -> Alg.t
+end
+
+(* RFC 7517. A JWK never chooses its own algorithm: kty (and crv)
+   determine it, an "alg" member must agree, and the result is the
+   same phantom-indexed key Key constructs, with all of Key's
+   material checks (length floors, parity, on-curve) applied. *)
+module Jwk : sig
+  (* One verification key parsed from JWK JSON. "use", when present,
+     must be "sig"; "key_ops", when present, must include "verify";
+     any private-key member (d, p, q, dp, dq, qi, oth) is a hard
+     reject: a verifier must never be handed signing material. x5c,
+     x5u, x5t and other unknown members are ignored caller-side
+     metadata here, unlike in a token header, where they are
+     attacker-controlled and rejected. *)
+  type t =
+    | Hs256 of Key.hs256 Key.t
+    | Rs256 of Key.rs256 Key.t
+    | Es256 of Key.es256 Key.t
+
+  val parse : string -> (t, Error.t) result
+  val of_json : Json.t -> (t, Error.t) result
+  val alg : t -> Alg.t
+end
+
+module Jwks : sig
+  (* An RFC 7517 JWK Set, for opaque-kid lookup: [find] only ever
+     compares kid for string equality. Structural problems reject the
+     whole set: bad JSON, missing or non-list "keys", a non-object
+     entry, a non-string kid, private key material anywhere, or two
+     retained entries sharing a kid. A well-formed entry that is not
+     a supported verification key (use=enc, foreign kty/crv/alg,
+     material Key rejects) is dropped instead, so one foreign key in
+     a rotation set cannot brick verification; [dropped] counts the
+     drops for monitoring. *)
+  type t
+
+  val parse : string -> (t, Error.t) result
+  val find : kid:string -> t -> Jwk.t option
+  val keys : t -> Jwk.t list
+  val dropped : t -> int
 end
 
 module Expect : sig

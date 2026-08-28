@@ -22,6 +22,7 @@ expected() {
     bad_key_from_string) echo "Key.t" ;;
     bad_forge_verified) echo "verified" ;;
     bad_admit_external) echo "Unbound value" ;;
+    bad_jwk_cross_alg) echo "hs256" ;;
     *) echo "UNKNOWN-SNIPPET" ;;
   esac
 }

@@ -249,4 +249,67 @@ must_contain(
     test_p256, enc(p256_n.to_bytes(32, "big")), "p-256 group order"
 )
 
+
+# RFC 7517 A.1 and the M12 e2e JWKS (test_jwk.ml): re-derive the key
+# material facts in python and pin every fragment. The A.1 EC key must
+# be a real P-256 point (it is dropped for use=enc, not for being
+# garbage); the A.1 RSA modulus must be 256 minimal odd bytes with
+# e=65537; the e2e set must reuse the RFC 7515 key and token bytes
+# that the other suites already gate, byte-identically.
+test_jwk = root / "test" / "test_jwk.ml"
+jwk_ec_x = "MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4"
+jwk_ec_y = "4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM"
+jwk_rsa_n = (
+    "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx4cbbfAAtVT86z"
+    "wu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMstn64tZ_2W-5Js"
+    "GY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2QvzqY368QQMic"
+    "AtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbISD08qNLyrdkt-"
+    "bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqbw0Ls1jF44-csF"
+    "Cur-kEgU8awapJzKnqDKgw"
+)
+jx = int.from_bytes(b64u(jwk_ec_x), "big")
+jy = int.from_bytes(b64u(jwk_ec_y), "big")
+if not ec_on_curve(jx, jy):
+    print("diff_rfc: rfc7517 a1 EC key is NOT on P-256")
+    fail = 1
+else:
+    print("diff_rfc: rfc7517 a1 EC key on curve ok")
+jn = b64u(jwk_rsa_n)
+if (
+    len(jn) != 256
+    or jn[0] == 0
+    or jn[-1] & 1 != 1
+    or int.from_bytes(b64u("AQAB"), "big") != 65537
+):
+    print("diff_rfc: rfc7517 a1 RSA modulus facts FAILED")
+    fail = 1
+else:
+    print("diff_rfc: rfc7517 a1 RSA modulus ok")
+must_contain(test_jwk, jwk_ec_x, "rfc7517 a1 x")
+must_contain(test_jwk, jwk_ec_y, "rfc7517 a1 y")
+for i in range(0, len(jwk_rsa_n), 64):
+    must_contain(test_jwk, jwk_rsa_n[i : i + 64], f"rfc7517 a1 n[{i}]")
+
+# Cross-file identity: the e2e fragments must sit in test_jwk.ml AND in
+# the suite that originally gates them.
+jwk_a1_k = "AyM1SysPpbyDfgZld3umj1qzKObwVMkoqQ-EstJQLr_T"
+jwk_a2_n = "ofgWCuLjybRlzo0tZWJjNiuSfb4p4fAkd_wWJcyQoTbji9k0l8W26mPddxHmfHQp"
+jwk_a3_x = "f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU"
+jwk_a3_y = "x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0"
+ax = int.from_bytes(b64u(jwk_a3_x), "big")
+ay = int.from_bytes(b64u(jwk_a3_y), "big")
+if not ec_on_curve(ax, ay):
+    print("diff_rfc: e2e a3 EC key is NOT on P-256")
+    fail = 1
+else:
+    print("diff_rfc: e2e a3 EC key on curve ok")
+for frag, src, label in [
+    (jwk_a1_k, root / "test" / "test_jwt.ml", "e2e a1 k"),
+    (jwk_a2_n, root / "test" / "test_rsa.ml", "e2e a2 n"),
+    (jwk_a3_x, root / "test" / "test_p256.ml", "e2e a3 x"),
+    (jwk_a3_y, root / "test" / "test_p256.ml", "e2e a3 y"),
+]:
+    must_contain(test_jwk, frag, label + " (test_jwk)")
+    must_contain(src, frag, label + " (origin suite)")
+
 sys.exit(fail)

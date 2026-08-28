@@ -27,3 +27,8 @@
  (name test_p256)
  (modules test_p256)
  (libraries jose))
+
+(test
+ (name test_jwk)
+ (modules test_jwk)
+ (libraries jose))

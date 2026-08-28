@@ -9,8 +9,12 @@ root="$(cd "$here/.." && pwd)"
 
 tests_green() {
   dune build --root "$root" @all >/dev/null 2>&1 || return 2
-  for t in test_codec test_hmac test_jwt test_limbs test_rsa test_p256; do
-    case "$("$root/_build/default/test/$t.exe" 2>/dev/null)" in
+  for t in test_codec test_hmac test_jwt test_jwk test_limbs test_rsa test_p256; do
+    # alarm survives exec: a mutant that makes a suite spin (e.g. a
+    # broken borrow turning subtract-until-reduced into an infinite
+    # recursion) is killed by SIGALRM; non-zero exit counts as red.
+    out="$(perl -e 'alarm 300; exec @ARGV' -- "$root/_build/default/test/$t.exe" 2>/dev/null)" || return 1
+    case "$out" in
       *FAIL*) return 1 ;;
     esac
   done
@@ -84,6 +88,22 @@ mutant key-es256-on-curve lib/keyx.ml \
   "when not (P256x.on_curve_bytes ~x ~y) ->" "when false ->"
 mutant key-es256-sig-length lib/keyx.ml \
   "| Es _ -> 64" "| Es _ -> 63"
+
+mutant jwk-use-gate lib/jwkx.ml \
+  "if String.equal s \"sig\" then Ok ()" "if true then Ok ()"
+mutant jwk-private-members lib/jwkx.ml \
+  "[ \"d\"; \"p\"; \"q\"; \"dp\"; \"dq\"; \"qi\"; \"oth\" ]" \
+  "[ \"dp\"; \"dq\"; \"qi\"; \"oth\" ]"
+mutant jwk-crv-gate lib/jwkx.ml \
+  "if String.equal crv \"P-256\" then Ok ()" "if true then Ok ()"
+mutant jwk-alg-agree lib/jwkx.ml \
+  "if String.equal s (Algx.to_string expected) then Ok ()" \
+  "if true then Ok ()"
+mutant jwk-dup-kid lib/jwkx.ml \
+  "else Error (Errx.Jwk_invalid \"duplicate kid in JWK Set\")" "else Ok ()"
+mutant jwk-dropped-count lib/jwkx.ml \
+  "~error:(fun (_ : Errx.t) -> (kept, dropped + 1))" \
+  "~error:(fun (_ : Errx.t) -> (kept, dropped))"
 
 if tests_green; then
   echo "mutate: ladder restored green"

@@ -101,7 +101,8 @@ let jws_checks : (string * bool) list =
              | Jose.Error.Claim_malformed _ | Jose.Error.Iss_mismatch
              | Jose.Error.Aud_mismatch | Jose.Error.Expired _
              | Jose.Error.Not_yet_valid _ | Jose.Error.Iat_in_future _
-             | Jose.Error.Time_invalid _ | Jose.Error.Expect_invalid _ ->
+             | Jose.Error.Time_invalid _ | Jose.Error.Expect_invalid _
+             | Jose.Error.Jwk_invalid (_ : string) ->
                false)
            (check_sig key
               (mk_token "{\"alg\":\"HS256\",\"alg\":\"HS256\"}" "{}")));
