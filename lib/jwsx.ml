@@ -33,7 +33,10 @@ let split3 (s : string) : (string * string * string, Errx.t) result =
   in
   finish (cur_rev :: parts_rev)
 
-type checked = { header : Headx.t; payload : string }
+(* [ph] is the Verify_core phase this token has reached: one
+   [step ph true] per passed check. jwtx continues the walk and admits
+   only from [Admitted], so a skipped check fails closed. *)
+type checked = { header : Headx.t; payload : string; ph : Verify_core.phase }
 
 let verify (type a) ~(key : a Keyx.t) (token : string) :
     (checked, Errx.t) result =
@@ -50,6 +53,7 @@ let verify (type a) ~(key : a Keyx.t) (token : string) :
       Error (Errx.Token_shape "empty signature")
     | () -> Ok ()
   in
+  let ph = Verify_core.advance Verify_core.Shape Verify_core.start in
   let* hbytes = B64x.decode h64 in
   let* () =
     if String.length hbytes > max_header_bytes then
@@ -60,6 +64,7 @@ let verify (type a) ~(key : a Keyx.t) (token : string) :
     Result.map_error (fun e -> Errx.Json_invalid e) (Jsonx.parse hbytes)
   in
   let* header = Headx.parse hjson in
+  let ph = Verify_core.advance Verify_core.Header ph in
   let* () =
     if Algx.equal header.Headx.alg (Keyx.alg key) then Ok ()
     else
@@ -68,6 +73,7 @@ let verify (type a) ~(key : a Keyx.t) (token : string) :
            { token = Algx.to_string header.Headx.alg;
              key = Algx.to_string (Keyx.alg key) })
   in
+  let ph = Verify_core.advance Verify_core.Alg ph in
   let* sigbytes = B64x.decode s64 in
   let* () =
     if Int.equal (String.length sigbytes) (Keyx.signature_length key) then
@@ -80,8 +86,10 @@ let verify (type a) ~(key : a Keyx.t) (token : string) :
       Ok ()
     else Error Errx.Sig_invalid
   in
+  let ph = Verify_core.advance Verify_core.Sig ph in
   let* payload = B64x.decode p64 in
-  Ok { header; payload }
+  let ph = Verify_core.advance Verify_core.Payload ph in
+  Ok { header; payload; ph }
 
 let check_signature (type a) ~(key : a Keyx.t) (token : string) :
     (unit, Errx.t) result =

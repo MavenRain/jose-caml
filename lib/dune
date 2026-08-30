@@ -3,4 +3,4 @@
  (public_name jose_caml)
  (libraries sha2)
  (modules bytesx limbsx errx b64x jsonx algx headx hmacx rsax p256x keyx jwkx
-   timex expx clx jwsx jwtx jose))
+   timex expx clx verify_core jwsx jwtx jose))

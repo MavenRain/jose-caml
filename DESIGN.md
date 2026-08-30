@@ -174,7 +174,7 @@ a shared vector set.
 | M10 | `rsax.ml` PKCS#1 v1.5 verify, `Key.rs256`, RFC 7515 A.2 vector | DONE |
 | M11 | `p256.ml` port, ES256 raw r||s, RFC 7515 A.3 vector, psychic rejects | TODO |
 | M12 | `jwk.ml` / JWKS: typed JWK parse, opaque-kid lookup, RFC 7517 vectors | TODO |
-| M13 | `verify_core.ml` extraction + CTLK model + P1..P6 + correspondence gate | TODO |
+| M13 | `verify_core.ml` extraction + CTLK model + P1..P6 + correspondence gate | DONE |
 | M14 | runtime CVE-corpus harness (section 2 table, one vector per row) | TODO |
 | M15 | `oidc.ml` ID-token layer: nonce witness, azp rule, multi-aud | TODO |
 | M16 | node differential script (`jose`, `jsonwebtoken`), skipped w/o node | TODO |

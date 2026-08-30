@@ -9,6 +9,7 @@ depends: [
   "ocaml" {>= "5.1"}
   "dune" {>= "3.0"}
   "sha2"
+  "ctlk_topos"
 ]
 build: [
   ["dune" "build" "-p" name "-j" jobs]

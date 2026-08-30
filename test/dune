@@ -32,3 +32,8 @@
  (name test_jwk)
  (modules test_jwk)
  (libraries jose))
+
+(test
+ (name test_correspondence)
+ (modules test_correspondence)
+ (libraries jose jose_model))

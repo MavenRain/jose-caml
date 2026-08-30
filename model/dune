@@ -1,0 +1,12 @@
+(library
+ (name jose_model)
+ (libraries ctlk_topos)
+ (modules verify_core frame))
+
+(copy_files
+ (files ../lib/verify_core.ml))
+
+(test
+ (name check)
+ (modules check)
+ (libraries jose_model ctlk_topos))

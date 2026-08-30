@@ -9,7 +9,11 @@ root="$(cd "$here/.." && pwd)"
 
 tests_green() {
   dune build --root "$root" @all >/dev/null 2>&1 || return 2
-  for t in test_codec test_hmac test_jwt test_jwk test_limbs test_rsa test_p256; do
+  out="$(perl -e 'alarm 300; exec @ARGV' -- "$root/_build/default/model/check.exe" 2>/dev/null)" || return 1
+  case "$out" in
+    *FAIL*) return 1 ;;
+  esac
+  for t in test_codec test_hmac test_jwt test_jwk test_limbs test_rsa test_p256 test_correspondence; do
     # alarm survives exec: a mutant that makes a suite spin (e.g. a
     # broken borrow turning subtract-until-reduced into an infinite
     # recursion) is killed by SIGALRM; non-zero exit counts as red.
@@ -104,6 +108,22 @@ mutant jwk-dup-kid lib/jwkx.ml \
 mutant jwk-dropped-count lib/jwkx.ml \
   "~error:(fun (_ : Errx.t) -> (kept, dropped + 1))" \
   "~error:(fun (_ : Errx.t) -> (kept, dropped))"
+
+mutant vc-next-skip-exp lib/verify_core.ml \
+  "| Aud -> Some Exp" "| Aud -> Some Nbf"
+mutant vc-fail-stays lib/verify_core.ml \
+  "else Rejected c" "else Checking c"
+mutant vc-drive-ignores-results lib/verify_core.ml \
+  "(step ph (results c))" "(step ph (results c || true))"
+mutant jws-start-fail lib/jwsx.ml \
+  "let ph = Verify_core.advance Verify_core.Shape Verify_core.start in" \
+  "let ph = Verify_core.advance Verify_core.Header Verify_core.start in"
+mutant frame-lax-alg-in-strict model/frame.ml \
+  "| Strict, (A_none | A_wrong) -> false" \
+  "| Strict, (A_none | A_wrong) -> true"
+mutant frame-forgery-sig model/frame.ml \
+  "| Strict, (A_match | A_none | A_wrong) -> not t.tampered" \
+  "| Strict, (A_match | A_none | A_wrong) -> true"
 
 if tests_green; then
   echo "mutate: ladder restored green"

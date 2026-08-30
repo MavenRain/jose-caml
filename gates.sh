@@ -6,13 +6,25 @@ here="$(cd "$(dirname "$0")" && pwd)"
 
 dune build --root "$here" @all
 
-for t in test_codec test_hmac test_jwt test_jwk test_limbs test_rsa test_p256; do
-  out="$("$here/_build/default/test/$t.exe")"
-  echo "$t: $out"
+for t in test_codec test_hmac test_jwt test_jwk test_limbs test_rsa test_p256 test_correspondence; do
+  if out="$("$here/_build/default/test/$t.exe")"; then
+    echo "$t: $out"
+  else
+    echo "$t: $out"; echo "gate: $t failed"; exit 1
+  fi
   case "$out" in
     *FAIL*) echo "gate: $t failed"; exit 1 ;;
   esac
 done
+
+if out="$("$here/_build/default/model/check.exe")"; then
+  echo "$out"
+else
+  echo "$out"; echo "gate: model check failed"; exit 1
+fi
+case "$out" in
+  *FAIL*) echo "gate: model check failed"; exit 1 ;;
+esac
 
 "$here/harness/compile_fail.sh"
 python3 "$here/harness/diff_rfc.py"
