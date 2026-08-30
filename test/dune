@@ -37,3 +37,8 @@
  (name test_correspondence)
  (modules test_correspondence)
  (libraries jose jose_model))
+
+(test
+ (name test_cve)
+ (modules test_cve)
+ (libraries jose))

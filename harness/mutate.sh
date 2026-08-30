@@ -13,7 +13,7 @@ tests_green() {
   case "$out" in
     *FAIL*) return 1 ;;
   esac
-  for t in test_codec test_hmac test_jwt test_jwk test_limbs test_rsa test_p256 test_correspondence; do
+  for t in test_codec test_hmac test_jwt test_jwk test_limbs test_rsa test_p256 test_correspondence test_cve; do
     # alarm survives exec: a mutant that makes a suite spin (e.g. a
     # broken borrow turning subtract-until-reduced into an infinite
     # recursion) is killed by SIGALRM; non-zero exit counts as red.
@@ -124,6 +124,19 @@ mutant frame-lax-alg-in-strict model/frame.ml \
 mutant frame-forgery-sig model/frame.ml \
   "| Strict, (A_match | A_none | A_wrong) -> not t.tampered" \
   "| Strict, (A_match | A_none | A_wrong) -> true"
+
+# M14 CVE corpus: three defenses the table names but the ladder above did
+# not yet flip. Each maps to a DESIGN section 2 row and is killed by the
+# test_cve suite (and by an older suite too -- redundant coverage is the
+# point of an executable threat model).
+mutant cve-alg-mismatch-gate lib/jwsx.ml \
+  "if Algx.equal header.Headx.alg (Keyx.alg key) then Ok ()" \
+  "if true || Algx.equal header.Headx.alg (Keyx.alg key) then Ok ()"
+mutant cve-crit-accept lib/headx.ml \
+  "~some:(fun (_ : Jsonx.t) -> Error Errx.Crit_unsupported)" \
+  "~some:(fun (_ : Jsonx.t) -> Ok ())"
+mutant cve-zip-allow lib/headx.ml \
+  "\"zip\"; " ""
 
 if tests_green; then
   echo "mutate: ladder restored green"
